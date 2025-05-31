@@ -1,6 +1,7 @@
 /*
  Atividade Vivencial 2 - Processamento Gráfico
  Aluno: José Márcio Krüger Costantini
+
  */
 
 #include <iostream>
@@ -65,6 +66,7 @@ const GLchar *fragmentShaderSource = R"(
  }
  )";
 
+ //Criaçâo de um struct para as texturas do cenário.
  /*struct Layer {
     GLuint textureId;
     float offsetX;
