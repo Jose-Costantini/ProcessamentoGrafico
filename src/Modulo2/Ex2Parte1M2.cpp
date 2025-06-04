@@ -1,10 +1,8 @@
-/* Hello Triangle - código adaptado de https://learnopengl.com/#!Getting-started/Hello-Triangle
- *
- * Adaptado por Rossana Baptista Queiroz
- * para a disciplina de Processamento Gráfico - Unisinos
- * Versão inicial: 7/4/2017
- * Última atualização em 13/08/2024
- *
+/*Disciplina: Processamento Gráfico - Unisinos
+ *Atividade do Mõdulo 2: 5 triângulos diferentes criados pela função de criação de trinângulos "GLuint createTriangle(float x0, float y0, float x1, float y1, float x2, float y2)".
+ *Aluno: José Márcio Krüger Costantini
+ *Data: 03/06/2025
+ *Código feito com base nos códigos mostrados pela professora Rossana Baptista Queiroz.
  */
 
 #include <iostream>
