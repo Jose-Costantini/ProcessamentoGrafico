@@ -1,7 +1,6 @@
 /*Disciplina: Processamento Gráfico - Unisinos
  *Atividade do Mõdulo 2: Triângulos de cores diferentes em cada local clicado
  *Aluno: José Márcio Krüger Costantini
- *Data: 03/06/2025
  *Código feito com base nos códigos mostrados pela professora Rossana Baptista Queiroz.
  */
 

@@ -1,7 +1,6 @@
 /*Disciplina: Processamento Gráfico - Unisinos
  *Atividade do Mõdulo 2: Função de criação de trinângulos: GLuint createTriangle(float x0, float y0, float x1, float y1, float x2, float y2)
  *Aluno: José Márcio Krüger Costantini
- *Data: 03/06/2025
  *Código feito com base nos códigos mostrados pela professora Rossana Baptista Queiroz.
  */
 
