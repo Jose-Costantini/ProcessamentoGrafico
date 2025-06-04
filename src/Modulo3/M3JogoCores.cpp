@@ -81,6 +81,9 @@ vector<vec3> colors;
 int indSelec= -1;
 // Criação da grid de quadrados para o jogo.
 Quad grid[ROWS][COLS];
+int pontos = 0; // Pontuação.
+int nQuadEliminadosTotais; //Número de quadrados eliminados no total até o momento.
+int maxQuadrados = ROWS * COLS; //Número máximo de quadrados possíveis.
 
 // Função MAIN
 int main()
@@ -280,16 +283,33 @@ int setupShader()
 
 void mouse_button_callback(GLFWwindow *window, int button, int action, int mods)
 {
-	if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS)
+	if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS )
 	{
 		double xpos, ypos;
 		glfwGetCursorPos(window, &xpos, &ypos);
+		cout << " "  << endl;
 		cout << xpos << "  " << ypos << endl;
 		cout << xpos / QUAD_WIDTH << " " << ypos / QUAD_HEIGHT << endl;
 		int x = xpos / QUAD_WIDTH;
 		int y = ypos / QUAD_HEIGHT;
+
+		if (nQuadEliminadosTotais == maxQuadrados) //Checa se ainda há quadrados a eliminar e avisa ao jogador.
+		{
+			cout << " "  << endl;
+			cout << "Todos os quadrados foram eliminados. Fim de jogo." << endl;
+			cout << "Quadrados eliminados: " << nQuadEliminadosTotais << endl;
+			cout << "Pontos finais: " << pontos << endl;
+			
+
+		}
+
+		if(grid[y][x].eliminado == false)
+		{
 		grid[y][x].eliminado = true; //Elimina o quadrado clicado.
 		indSelec = x + y * QUAD_WIDTH; //Índice linear do quadrado selecionado no grid.
+		pontos++;
+		nQuadEliminadosTotais++;
+		}
 	}
 }
 
@@ -298,6 +318,7 @@ void eliminaSimilares(float tolerancia)
 	int x = indSelec % COLS;
 	int y = indSelec / COLS;
 	int nQuadEliminados = 0;
+	int pontosRodada = 0;
 	vec3 C = grid[y][x].color; //Cor do quadrado clicado
 	grid[y][x].eliminado = true; 
 	for (int i = 0; i < ROWS; i++)
@@ -307,16 +328,24 @@ void eliminaSimilares(float tolerancia)
 			vec3 O = grid[i][j].color; //Cor do quadrado analisado.
 			float d = sqrt(pow(C.r - O.r, 2) + pow(C.g - O.g, 2) + pow(C.b - O.b, 2)); //Cálculo das distâncias entre as cores.
 			float dd = d/dMax; // Relação da distância entre as cores em relação a distância máxima possível.
-			if (dd <= tolerancia)
+			if (dd <= tolerancia && grid[i][j].eliminado == false)
 			{
 				grid[i][j].eliminado = true;
-			
 				nQuadEliminados++;
 			}
 		}
 	}
 	indSelec = -1; //Muda novamente para -1.
+	pontosRodada = 2 * nQuadEliminados;
+	pontos += pontosRodada;
+	nQuadEliminadosTotais += nQuadEliminados; 
+	cout << " "  << endl;
 	cout << "Quadrados similares eliminados no clique: " <<  nQuadEliminados << endl;
+	cout << "Pontos adquiridos por quadrados similares eliminados(2x): + " <<  pontosRodada << endl;
+	cout << "Pontos: +1 por quadrado clicado" << endl;
+	cout << "Pontos: " <<  pontos << endl;
+	cout << "Total de quadrados eliminados: " << nQuadEliminadosTotais << endl;
+	
 }
 
 GLuint createQuad()
