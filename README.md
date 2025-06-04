@@ -9,3 +9,6 @@ O exercício 1 consiste na passagem de parâmetros através da função "Create 
 O exercício 2 utiliza a mesma função criada no exercício anterior, mas passa 5 triângulos utilizando um vector. 
 
 ## Atividade Vivencial 2
+
+## Exercícios Módulo 3
+Jogo das cores, o qual consiste em eliminar os quadrados com cores similares. O número de quadrados de cores similares eliminados é indicado no console.
