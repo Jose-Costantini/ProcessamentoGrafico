@@ -1,6 +1,8 @@
 # ProcessamentoGrafico
 Repositório criado para as tarefas da atividade acadêmica de Processamento Gráfico.
 
+As atividades encontram-se na pasta src.
+
 Aluno: José Márcio Krüger Costantini
 ## Exercícios Módulo 2
 ### Parte 1
