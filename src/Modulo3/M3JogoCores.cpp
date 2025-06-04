@@ -1,7 +1,6 @@
 /*Disciplina: Processamento Gráfico - Unisinos
  *Atividade do Mõdulo 3: Jogo das Cores
  *Aluno: José Márcio Krüger Costantini
- *Data: 03/06/2025
  *Código feito com base nos códigos mostrados pela professora Rossana Baptista Queiroz.
  */
 

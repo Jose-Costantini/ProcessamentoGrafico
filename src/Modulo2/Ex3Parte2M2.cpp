@@ -1,10 +1,8 @@
-/* Hello Triangle - código adaptado de https://learnopengl.com/#!Getting-started/Hello-Triangle
- *
- * Adaptado por Rossana Baptista Queiroz
- * para a disciplina de Processamento Gráfico - Unisinos
- * Versão inicial: 7/4/2017
- * Última atualização em 13/08/2024
- *
+/*Disciplina: Processamento Gráfico - Unisinos
+ *Atividade do Mõdulo 2: Triângulos de cores diferentes em cada local clicado
+ *Aluno: José Márcio Krüger Costantini
+ *Data: 03/06/2025
+ *Código feito com base nos códigos mostrados pela professora Rossana Baptista Queiroz.
  */
 
 #include <iostream>
@@ -31,7 +29,7 @@ using namespace glm;
 
 // Protótipo da função de callback de teclado
 void key_callback(GLFWwindow *window, int key, int scancode, int action, int mode);
-void mouse_button_callback(GLFWwindow* window, int button, int action, int mods);
+void mouse_button_callback(GLFWwindow *window, int button, int action, int mods);
 
 // Protótipos das funções
 GLuint createTriangle(float x0, float y0, float x1, float y1, float x2, float y2);
@@ -65,7 +63,7 @@ void main()
 }
 )";
 
-struct Triangle 
+struct Triangle
 {
 	vec3 position;
 	vec3 dimensions;
@@ -74,8 +72,8 @@ struct Triangle
 
 vector<Triangle> triangles;
 
-vector <vec3> colors;
-int iColor = 0;
+vector<vec3> colors;
+int iColor = 0; // Índice de cores
 
 // Função MAIN
 int main()
@@ -87,9 +85,10 @@ int main()
 	// Você deve adaptar para a versão do OpenGL suportada por sua placa
 	// Sugestão: comente essas linhas de código para desobrir a versão e
 	// depois atualize (por exemplo: 4.5 com 4 e 5)
-	/*glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
+
+	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4.6);
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 6);
-	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);*/
+	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
 	// Essencial para computadores da Apple
 	// #ifdef __APPLE__
@@ -116,21 +115,20 @@ int main()
 	cout << "Renderer: " << renderer << endl;
 	cout << "OpenGL version supported " << version << endl;
 
+	// Inicializando paleta de cores
+	colors.push_back(vec3(255, 99, 130));  // Rosa Vibrante -> 0
+	colors.push_back(vec3(255, 159, 28));  // Laranja Solar -> 1
+	colors.push_back(vec3(255, 222, 89));  // Amarelo Ouro -> 2
+	colors.push_back(vec3(102, 204, 153)); // Verde Tropical -> 3
+	colors.push_back(vec3(64, 183, 204));  // Azul Celeste -> 4
+	colors.push_back(vec3(138, 114, 255)); // Roxo Elétrico -> 5
+	colors.push_back(vec3(255, 133, 199)); // Pink Chiclete -> 6
+	colors.push_back(vec3(0, 191, 165));   // Verde Água -> 7
+	colors.push_back(vec3(255, 111, 78));  // Coral Flamejante -> 8
+	colors.push_back(vec3(177, 144, 255)); // Lavanda Neon -> 9
 
-	//Inicializando paleta de cores
-	colors.push_back(vec3(200, 191, 231));
-	colors.push_back(vec3(174, 217, 224));
-	colors.push_back(vec3(181, 234, 215));
-	colors.push_back(vec3(255, 241, 182));
-	colors.push_back(vec3(255, 188, 188));
-	colors.push_back(vec3(246, 193, 199));
-	colors.push_back(vec3(255, 216, 190));
-	colors.push_back(vec3(220, 198, 224));
-	colors.push_back(vec3(208, 230, 165));
-	colors.push_back(vec3(183, 201, 226));
-
-	// Normalizar as cores entre 0 e 1
-	for (int i=0; i<colors.size(); i++)
+	// Normalizar as cores entre 0 e 1. É necessário normalizar para enviar as cores para o shader.
+	for (int i = 0; i < colors.size(); i++)
 	{
 		colors[i].r /= 255.0;
 		colors[i].g /= 255.0;
@@ -145,16 +143,14 @@ int main()
 	// Compilando e buildando o programa de shader
 	GLuint shaderID = setupShader();
 
-	
-	GLuint VAO = createTriangle(-0.5,-0.5,0.5,-0.5,0.0,0.5);
-	
-	Triangle tri;
-	tri.position = vec3(400.0,300.0,0.0);
-	tri.dimensions = vec3(100.0,100.0,1.0);
-	tri.color = vec3(colors[iColor].r, colors[iColor].g, colors[iColor].b);
-	iColor = (iColor + 1) % colors.size();
-	triangles.push_back(tri);
+	GLuint VAO = createTriangle(-0.5, -0.5, 0.5, -0.5, 0.0, 0.5);
 
+	Triangle tri;
+	tri.position = vec3(400.0, 300.0, 0.0);
+	tri.dimensions = vec3(100.0, 100.0, 1.0);
+	tri.color = vec3(colors[iColor].r, colors[iColor].g, colors[iColor].b);
+	iColor = (iColor + 1) % colors.size(); // Incremento cíclico (ou circular) para a escolha das cores. Recebe o seu valor + 1 módulo (%) o número de cores da paleta.
+	triangles.push_back(tri);
 
 	glUseProgram(shaderID);
 
@@ -188,11 +184,11 @@ int main()
 			// Matriz de modelo: transformações na geometria (objeto)
 			mat4 model = mat4(1); // matriz identidade
 			// Translação
-			model = translate(model,vec3(triangles[i].position.x,triangles[i].position.y,0.0));
+			model = translate(model, vec3(triangles[i].position.x, triangles[i].position.y, 0.0));
 
-			model = rotate(model,radians(180.0f),vec3(0.0,0.0,1.0));
+			model = rotate(model, radians(180.0f), vec3(0.0, 0.0, 1.0));
 			// Escala
-			model = scale(model,vec3(triangles[i].dimensions.x,triangles[i].dimensions.y,1.0));
+			model = scale(model, vec3(triangles[i].dimensions.x, triangles[i].dimensions.y, 1.0));
 			glUniformMatrix4fv(glGetUniformLocation(shaderID, "model"), 1, GL_FALSE, value_ptr(model));
 
 			glUniform4f(colorLoc, triangles[i].color.r, triangles[i].color.g, triangles[i].color.b, 1.0f); // enviando cor para variável uniform inputColor
@@ -215,7 +211,7 @@ int main()
 		glfwSwapBuffers(window);
 	}
 	// Pede pra OpenGL desalocar os buffers
-	//glDeleteVertexArrays(1, &VAO);
+	// glDeleteVertexArrays(1, &VAO);
 	// Finaliza a execução da GLFW, limpando os recursos alocados por ela
 	glfwTerminate();
 	return 0;
@@ -379,20 +375,19 @@ GLuint createTriangle(float x0, float y0, float x1, float y1, float x2, float y2
 	return VAO;
 }
 
-void mouse_button_callback(GLFWwindow* window, int button, int action, int mods)
+void mouse_button_callback(GLFWwindow *window, int button, int action, int mods)
 {
-    if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS)
-    {
+	if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS)
+	{
 		double xpos, ypos;
 		glfwGetCursorPos(window, &xpos, &ypos);
 		cout << xpos << "  " << ypos << endl;
 
 		Triangle tri;
-		tri.position = vec3(xpos,ypos,0.0);
-		tri.dimensions = vec3(100.0,100.0,1.0);
+		tri.position = vec3(xpos, ypos, 0.0); // Outra maneira de lidar com a inversão do eixo y, causada pelo padrão da OpenGL, seria  enviar o HEIGHT - ypos no lugar do ypos. Dessa maneira, não seria necessário rotacionar o triângulo em 180 graus. tri.position = vec3(xpos, HEIGHT - ypos,0.0);
+		tri.dimensions = vec3(100.0, 100.0, 1.0);
 		tri.color = vec3(colors[iColor].r, colors[iColor].g, colors[iColor].b);
 		iColor = (iColor + 1) % colors.size();
 		triangles.push_back(tri);
-		
 	}
 }
