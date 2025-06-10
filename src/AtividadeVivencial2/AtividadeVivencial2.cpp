@@ -17,6 +17,10 @@ using namespace std;
 // GLFW
 #include <GLFW/glfw3.h>
 
+// STB_IMAGE
+#define STB_IMAGE_IMPLEMENTATION
+#include <stb_image.h>
+
 // GLM
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
@@ -24,17 +28,13 @@ using namespace std;
 
 using namespace glm;
 
-// STB_IMAGE
-#define STB_IMAGE_IMPLEMENTATION
-#include <stb_image.h>
-
 // Protótipo da função de callback de teclado
 void key_callback(GLFWwindow *window, int key, int scancode, int action, int mode);
 
 // Protótipos das funções
 int setupShader();
-int setupSprite();
-int loadTexture(string filePath);
+int setupSprite(int nAnimations, int nFrames, float &ds, float &dt);
+int loadTexture(string filePath, int &width, int &height);
 
 // Dimensões da janela (pode ser alterado em tempo de execução)
 const GLuint WIDTH = 800, HEIGHT = 600;
@@ -44,9 +44,9 @@ const GLchar *vertexShaderSource = R"(
  #version 400
  layout (location = 0) in vec3 position;
  layout (location = 1) in vec2 texc;
- uniform mat4 projection;
- uniform mat4 model;
  out vec2 tex_coord;
+ uniform mat4 model;
+ uniform mat4 projection;
  void main()
  {
 	tex_coord = vec2(texc.s, 1.0 - texc.t);
@@ -60,24 +60,28 @@ const GLchar *fragmentShaderSource = R"(
  in vec2 tex_coord;
  out vec4 color;
  uniform sampler2D tex_buff;
+ uniform vec2 offsetTex;
+
  void main()
+
  {
-	 color = texture(tex_buff,tex_coord);
+	 color = texture(tex_buff,tex_coord + offsetTex);
  }
  )";
 
- //Criaçâo de um struct para as texturas do cenário.
- /*struct Layer {
-    GLuint textureId;
-    float offsetX;
-    float parallaxFactor; // 1.0 = chão, 0.2 = montanhas distantes
+struct Sprite
+{
+	GLuint VAO;
+	GLuint texID;
+	vec3 position;
+	vec3 dimensions; // tamanho do frame
+	float ds, dt;
+	int iAnimation, iFrame;
+	int nAnimations, nFrames;
 };
 
-std::vector<Layer> layers = {
-    {loadTexture("../assests/tex/ground_1.png"), 0.0f, 1.0f},
-};
-
-*/
+bool movimento = false;
+int direction = 0;
 
 // Função MAIN
 int main()
@@ -90,10 +94,10 @@ int main()
 	// Sugestão: comente essas linhas de código para desobrir a versão e
 	// depois atualize (por exemplo: 4.5 com 4 e 5)
 
-	 glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4.6);
-	 glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 6);
-	 glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
-	// glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4.6);
+	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 6);
+	glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
+	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
 	// Ativa a suavização de serrilhado (MSAA) com 8 amostras por pixel
 	glfwWindowHint(GLFW_SAMPLES, 8);
@@ -104,7 +108,7 @@ int main()
 	// #endif
 
 	// Criação da janela GLFW
-	GLFWwindow *window = glfwCreateWindow(WIDTH, HEIGHT, "Atividade", nullptr, nullptr);
+	GLFWwindow *window = glfwCreateWindow(WIDTH, HEIGHT, "Atividade Vivencial 2 -- José Márcio", nullptr, nullptr);
 	if (!window)
 	{
 		std::cerr << "Falha ao criar a janela GLFW" << std::endl;
@@ -116,7 +120,7 @@ int main()
 	// Fazendo o registro da função de callback para a janela GLFW
 	glfwSetKeyCallback(window, key_callback);
 
-	// GLAD: carrega todos os ponteiros d funções da OpenGL
+	// GLAD: carrega todos os ponteiros das funções da OpenGL
 	if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress))
 	{
 		std::cerr << "Falha ao inicializar GLAD" << std::endl;
@@ -138,10 +142,82 @@ int main()
 	GLuint shaderID = setupShader();
 
 	// Gerando um buffer simples, com a geometria de um triângulo
-	GLuint VAO = setupSprite();
+	// GLuint VAO = setupSprite();
 
-	//Carregando uma textura 
-	GLuint texID = loadTexture("../assets/sprites/Vampirinho.png");
+	// Carregando uma textura
+	int imgWidth, imgHeight;
+	GLuint texID = loadTexture("../assets/sprites/Vampires1_Walk_full.png", imgWidth, imgHeight);
+
+	Sprite vampirao; // Personagem: Vampiro
+	vampirao.nAnimations = 4;
+	vampirao.nFrames = 6;
+	vampirao.VAO = setupSprite(vampirao.nAnimations, vampirao.nFrames, vampirao.ds, vampirao.dt);
+	vampirao.position = vec3(400.0, 100.0, 0.0);
+	vampirao.dimensions = vec3(imgWidth / vampirao.nFrames * 4, imgHeight / vampirao.nAnimations * 4, 1.0);
+	vampirao.texID = texID;
+	vampirao.iAnimation = 1;
+	vampirao.iFrame = 0;
+
+	Sprite ceu; // Céu : 1o fundo
+	ceu.nAnimations = 1;
+	ceu.nFrames = 1;
+	ceu.VAO = setupSprite(ceu.nAnimations, ceu.nFrames, ceu.ds, ceu.dt);
+	ceu.position = vec3(400.0, 300.0, 0.0);
+	ceu.texID = loadTexture("../assets/game_background_3/layers/sky.png", imgWidth, imgHeight);
+	ceu.dimensions = vec3(imgWidth / ceu.nFrames * 0.5, imgHeight / ceu.nAnimations * 0.5, 1.0);
+	ceu.iAnimation = 0;
+	ceu.iFrame = 0;
+
+	// As texturas das núvens estão com algum problema de opacidade. Ao carregá-las, o que está "atrás" delas some.
+	// Sprite nuvens;
+	// nuvens.nAnimations = 1;
+	// nuvens.nFrames = 1;
+	// nuvens.VAO = setupSprite(nuvens.nAnimations, nuvens.nFrames, nuvens.ds, nuvens.dt);
+	// nuvens.position = vec3(400.0, 300.0, 0.0);
+	// nuvens.texID = loadTexture("../assets/game_background_3/layers/clouds2.png", imgWidth, imgHeight);
+	// nuvens.dimensions = vec3(imgWidth / nuvens.nFrames, imgHeight / nuvens.nAnimations, 1.0);
+	// nuvens.iAnimation = 0;
+	// nuvens.iFrame = 0;
+
+	Sprite montanhas; // Montanhas
+	montanhas.nAnimations = 1;
+	montanhas.nFrames = 1;
+	montanhas.VAO = setupSprite(montanhas.nAnimations, montanhas.nFrames, montanhas.ds, montanhas.dt);
+	montanhas.position = vec3(400.0, 300.0, 0.0);
+	montanhas.texID = loadTexture("../assets/game_background_3/layers/rocks.png", imgWidth, imgHeight);
+	montanhas.dimensions = vec3(imgWidth / montanhas.nFrames * 0.5, imgHeight / montanhas.nAnimations * 0.5, 1.0);
+	montanhas.iAnimation = 0;
+	montanhas.iFrame = 0;
+
+	Sprite chao1; // Chão/terreno mais ao fundo, mas na frente das montanhas.
+	chao1.nAnimations = 1;
+	chao1.nFrames = 1;
+	chao1.VAO = setupSprite(chao1.nAnimations, chao1.nFrames, chao1.ds, chao1.dt);
+	chao1.position = vec3(400.0, 300.0, 0.0);
+	chao1.texID = loadTexture("../assets/game_background_3/layers/ground_1.png", imgWidth, imgHeight);
+	chao1.dimensions = vec3(imgWidth / chao1.nFrames * 0.5, imgHeight / chao1.nAnimations * 0.5, 1.0);
+	chao1.iAnimation = 0;
+	chao1.iFrame = 0;
+
+	Sprite chao2; // Chão/terreno à frente do chão mais ao fundo.
+	chao2.nAnimations = 1;
+	chao2.nFrames = 1;
+	chao2.VAO = setupSprite(chao2.nAnimations, chao2.nFrames, chao2.ds, chao2.dt);
+	chao2.position = vec3(400.0, 300.0, 0.0);
+	chao2.texID = loadTexture("../assets/game_background_3/layers/ground_2.png", imgWidth, imgHeight);
+	chao2.dimensions = vec3(imgWidth / chao2.nFrames * 0.5, imgHeight / chao2.nAnimations * 0.5, 1.0);
+	chao2.iAnimation = 0;
+	chao2.iFrame = 0;
+
+	Sprite chao3; // Chão/solo no qual o personagem caminha.
+	chao3.nAnimations = 1;
+	chao3.nFrames = 1;
+	chao3.VAO = setupSprite(chao3.nAnimations, chao3.nFrames, chao3.ds, chao3.dt);
+	chao3.position = vec3(400.0, 300.0, 0.0);
+	chao3.texID = loadTexture("../assets/game_background_3/layers/ground_3.png", imgWidth, imgHeight);
+	chao3.dimensions = vec3(imgWidth / chao3.nFrames * 0.5, imgHeight / chao3.nAnimations * 0.5, 1.0);
+	chao3.iAnimation = 0;
+	chao3.iFrame = 0;
 
 	glUseProgram(shaderID); // Reseta o estado do shader para evitar problemas futuros
 
@@ -156,27 +232,26 @@ int main()
 	// Criando a variável uniform pra mandar a textura pro shader
 	glUniform1i(glGetUniformLocation(shaderID, "tex_buff"), 0);
 
-	glEnable(GL_DEPTH_TEST); // Habilita o teste de profundidade
-	glDepthFunc(GL_ALWAYS); // Testa a cada ciclo
-
-	glEnable(GL_BLEND); //Habilita a transparência -- canal alpha
-	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA); //Seta função de transparência
-
-	mat4 projection = ortho(0.0, 800.0, 600.0, 0.0, -1.0, 1.0);
+	// Matriz de projeção paralela ortográfica
+	mat4 projection = ortho(0.0, 800.0, 0.0, 600.0, -1.0, 1.0);
 	glUniformMatrix4fv(glGetUniformLocation(shaderID, "projection"), 1, GL_FALSE, value_ptr(projection));
 
-	//Matriz de modelo: transformações na geometria (objeto)
-	mat4 model = mat4(1); //matriz identidade
-	//Translação
-	model = translate(model,vec3(400.0,300.0,0.0));
-	
-	model = rotate(model,radians(180.0f),vec3(0.0,0.0,1.0));
-	//Escala
-	model = scale(model,vec3(300.0,300.0,1.0));
-	glUniformMatrix4fv(glGetUniformLocation(shaderID, "model"), 1, GL_FALSE, value_ptr(model));
+	glEnable(GL_DEPTH_TEST); // Habilita o teste de profundidade
+	glDepthFunc(GL_ALWAYS);	 // Testa a cada ciclo
 
+	glEnable(GL_BLEND);								   // Habilita a transparência -- canal alpha
+	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA); // Seta função de transparência
 
-	// Loop da aplicação - "game loop"
+	double lastTime = 0.0;
+	double deltaT = 0.0;
+	double currTime = glfwGetTime();
+	double FPS = 12.0;
+
+	vec2 offsetTexBg = vec2(0.0, 0.0); // offset do céu.
+	vec2 offsetTexM = vec2(0.0, 0.0);  // offset do restante do background/fundo.
+	// Talvez ambos poderiam ser compactados na mesma variável, mas tive alguns problemas ao fazer isso.
+
+	// Loop da aplicação - "game_background loop"
 	while (!glfwWindowShouldClose(window))
 	{
 		// Este trecho de código é totalmente opcional: calcula e mostra a contagem do FPS na barra de título
@@ -193,7 +268,7 @@ int main()
 
 				// Cria uma string e define o FPS como título da janela.
 				char tmp[256];
-				sprintf(tmp, "Atividade Vivencial 2 - José Márcio %.2lf", fps);
+				sprintf(tmp, "Atividade Vivencial 2 - José Márcio FPS: %.2lf", fps);
 				glfwSetWindowTitle(window, tmp);
 
 				title_countdown_s = 0.1; // Reinicia o temporizador para atualizar o título periodicamente.
@@ -203,16 +278,6 @@ int main()
 		// Checa se houveram eventos de input (key pressed, mouse moved etc.) e chama as funções de callback correspondentes
 		glfwPollEvents();
 
-		/*
-		model = mat4(1); //matriz identidade
-		//Translação
-		model = translate(model,vec3(400.0,300.0,0.0));
-		model = rotate(model,(float)glfwGetTime(),vec3(0.0,0.0,1.0));
-		//Escala
-		model = scale(model,vec3(abs(cos(glfwGetTime())) * 300.0,abs(cos(glfwGetTime())) * 300.0,1.0));
-		glUniformMatrix4fv(glGetUniformLocation(shaderID, "model"), 1, GL_FALSE, value_ptr(model));
-		*/
-
 		// Limpa o buffer de cor
 		glClearColor(0.0f, 0.0f, 0.0f, 1.0f); // cor de fundo
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -220,35 +285,314 @@ int main()
 		glLineWidth(10);
 		glPointSize(20);
 
-		glBindVertexArray(VAO); // Conectando ao buffer de geometria
-		glBindTexture(GL_TEXTURE_2D, texID); // Conectando ao buffer de textura
+		// Céu parado.
+		mat4 model = mat4(1);					// matriz identidade
+		model = translate(model, ceu.position); // Translação
+		model = rotate(model, radians(0.0f), vec3(0.0, 0.0, 1.0));
+		model = scale(model, ceu.dimensions); // Escala
+		glUniformMatrix4fv(glGetUniformLocation(shaderID, "model"), 1, GL_FALSE, value_ptr(model));
 
-		// Chamada de desenho - drawcall
-		// Poligono Preenchido - GL_TRIANGLES
-		glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+		// Tentar fazer a matriz das núvens
 
-		// item c) exercicio 6
-		// glDrawArrays(GL_POINTS, 0, 6);
+		currTime = glfwGetTime();
+		deltaT = currTime - lastTime;
 
-		// glBindVertexArray(0); // Desnecessário aqui, pois não há múltiplos VAOs
+		// Sem movimento, personagem parado.
+		if (movimento == false)
+		{
+			offsetTexBg.t = 0.0;
+			glUniform2f(glGetUniformLocation(shaderID, "offsetTex"), offsetTexBg.s, offsetTexBg.t);
+			glBindVertexArray(ceu.VAO);				 // Conectando ao buffer de geometria
+			glBindTexture(GL_TEXTURE_2D, ceu.texID); // Conectando ao buffer de textura
 
-		// Troca os buffers da tela
+			// Chamada de desenho - drawcall
+			// Poligono Preenchido - GL_TRIANGLES
+			glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+
+			//---------------------------------------------------------------------------------
+
+			// Núvens - A textura da núvem está com algum problema de opacidade aparentemente. Quando carregada, ela apaga o fundo.
+			// offsetTexM.t = 0.0;
+			// glUniform2f(glGetUniformLocation(shaderID, "offsetTex"), offsetTexM.s, offsetTexM.t);
+			// glBindVertexArray(nuvens.VAO);		// Conectando ao buffer de geometria.
+			// glBindTexture(GL_TEXTURE_2D, nuvens.texID); // Conectando ao buffer de textura.
+
+			// //  Chamada de desenho - drawcall
+			// //  Poligono Preenchido - GL_TRIANGLES
+			// glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+
+			// Montanhas.
+			offsetTexM.s = montanhas.iFrame * 0.001;
+			offsetTexM.t = 0.0;
+			glUniform2f(glGetUniformLocation(shaderID, "offsetTex"), offsetTexM.s, offsetTexM.t);
+			glBindVertexArray(montanhas.VAO);
+			glBindTexture(GL_TEXTURE_2D, montanhas.texID);
+			glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+
+			// Chão mais ao fundo.
+			offsetTexM.s = chao1.iFrame * 0.005;
+			offsetTexM.t = 0;
+			glUniform2f(glGetUniformLocation(shaderID, "offsetTex"), offsetTexM.s, offsetTexM.t);
+			glBindVertexArray(chao1.VAO);
+			glBindTexture(GL_TEXTURE_2D, chao1.texID);
+			glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+
+			// Segundo chão mais ao fundo(intermediário).
+			offsetTexM.s = chao2.iFrame * 0.007;
+			offsetTexM.t = 0;
+			glUniform2f(glGetUniformLocation(shaderID, "offsetTex"), offsetTexM.s, offsetTexM.t);
+			glBindVertexArray(chao2.VAO);
+			glBindTexture(GL_TEXTURE_2D, chao2.texID);
+			glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+
+			// Chão onde o personagem está.
+			offsetTexM.s = chao3.iFrame * 0.02;
+			offsetTexM.t = 0;
+			glUniform2f(glGetUniformLocation(shaderID, "offsetTex"), offsetTexM.s, offsetTexM.t);
+			glBindVertexArray(chao3.VAO);
+			glBindTexture(GL_TEXTURE_2D, chao3.texID);
+			glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+
+			//---------------------------------------------------------------------
+			// Desenho do vampirao
+			// Matriz de transformaçao do objeto - Matriz de modelo.
+			model = mat4(1); // matriz identidade.
+			model = translate(model, vampirao.position);
+			// Teste para o Vampiro ficar voltado para o último sentido para o qual ele foi movimentado.
+			if (direction < 0)
+			{
+				model = rotate(model, radians(180.0f), vec3(0.0, 1.0, 0.0));
+			}
+			else
+				model = rotate(model, radians(0.0f), vec3(0.0, 0.0, 1.0));
+			model = scale(model, vampirao.dimensions);
+			glUniformMatrix4fv(glGetUniformLocation(shaderID, "model"), 1, GL_FALSE, value_ptr(model));
+
+			vec2 offsetTex;
+			if (deltaT >= 1.0 / FPS)
+			{
+				vampirao.iFrame = 0; // Vampiro parado.
+			}
+
+			offsetTex.s = vampirao.iFrame;
+			offsetTex.t = 0.0;
+			glUniform2f(glGetUniformLocation(shaderID, "offsetTex"), offsetTex.s, offsetTex.t);
+
+			glBindVertexArray(vampirao.VAO);			  // Conectando ao buffer de geometria.
+			glBindTexture(GL_TEXTURE_2D, vampirao.texID); // Conectando ao buffer de textura.
+
+			// Chamada de desenho - drawcall.
+			// Poligono Preenchido - GL_TRIANGLES.
+			glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+		}
+
+		// Detecção de movimento.
+		if (movimento == true)
+		{
+			// Movimento para direita.
+			if (direction == 1)
+			{
+				if (deltaT >= 1.0 / FPS)
+				{
+					montanhas.iFrame = (montanhas.iFrame + 1) % 1000; // Usei %1000 pois, ao utilizar um offset como 0.001, tive alguns problemas de repetiçoes de frames.
+					chao1.iFrame = (chao1.iFrame + 1) % 1000;
+					chao2.iFrame = (chao2.iFrame + 1) % 1000;
+					chao3.iFrame = (chao3.iFrame + 1) % 1000;
+				}
+
+				offsetTexBg.s = ceu.iFrame;
+				offsetTexBg.t = 0.0;
+				glUniform2f(glGetUniformLocation(shaderID, "offsetTex"), offsetTexBg.s, offsetTexBg.t);
+				glBindVertexArray(ceu.VAO);				 // Conectando ao buffer de geometria.
+				glBindTexture(GL_TEXTURE_2D, ceu.texID); // Conectando ao buffer de textura.
+				// Chamada de desenho - drawcall.
+				// Poligono Preenchido - GL_TRIANGLES.
+				glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+
+				// Montanhas.
+				offsetTexM.s = montanhas.iFrame * 0.001;
+				offsetTexM.t = 0.0;
+				glUniform2f(glGetUniformLocation(shaderID, "offsetTex"), offsetTexM.s, offsetTexM.t);
+				glBindVertexArray(montanhas.VAO);
+				glBindTexture(GL_TEXTURE_2D, montanhas.texID);
+				glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+
+				// Chão mais ao fundo.
+				offsetTexM.s = chao1.iFrame * 0.005;
+				offsetTexM.t = 0;
+				glUniform2f(glGetUniformLocation(shaderID, "offsetTex"), offsetTexM.s, offsetTexM.t);
+				glBindVertexArray(chao1.VAO);
+				glBindTexture(GL_TEXTURE_2D, chao1.texID);
+				glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+
+				// Segundo chão mais ao fundo(intermediário).
+				offsetTexM.s = chao2.iFrame * 0.007;
+				offsetTexM.t = 0;
+				glUniform2f(glGetUniformLocation(shaderID, "offsetTex"), offsetTexM.s, offsetTexM.t);
+				glBindVertexArray(chao2.VAO);
+				glBindTexture(GL_TEXTURE_2D, chao2.texID);
+				glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+
+				// Chão onde o personagem está.
+				offsetTexM.s = chao3.iFrame * 0.02;
+				offsetTexM.t = 0;
+				glUniform2f(glGetUniformLocation(shaderID, "offsetTex"), offsetTexM.s, offsetTexM.t);
+				glBindVertexArray(chao3.VAO);
+				glBindTexture(GL_TEXTURE_2D, chao3.texID);
+				glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+
+				//---------------------------------------------------------------------
+				// Desenho do vampirao.
+				// Matriz de transformaçao do objeto - Matriz de modelo.
+				model = mat4(1); // matriz identidade.
+				model = translate(model, vampirao.position);
+				model = rotate(model, radians(0.0f), vec3(0.0, 0.0, 1.0));
+				model = scale(model, vampirao.dimensions);
+				glUniformMatrix4fv(glGetUniformLocation(shaderID, "model"), 1, GL_FALSE, value_ptr(model));
+
+				vec2 offsetTex;
+
+				if (deltaT >= 1.0 / FPS)
+				{
+					vampirao.iFrame = (vampirao.iFrame + 1) % vampirao.nFrames; // incremento "circular".
+					lastTime = currTime;
+				}
+
+				offsetTex.s = vampirao.iFrame * vampirao.ds;
+				offsetTex.t = 0.0;
+				glUniform2f(glGetUniformLocation(shaderID, "offsetTex"), offsetTex.s, offsetTex.t);
+
+				glBindVertexArray(vampirao.VAO);			  // Conectando ao buffer de geometria.
+				glBindTexture(GL_TEXTURE_2D, vampirao.texID); // Conectando ao buffer de textura.
+
+				// Chamada de desenho - drawcall
+				// Poligono Preenchido - GL_TRIANGLES
+				glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+				//---------------------------------------------------------------------------
+			}
+
+			// Movimento para esquerda
+			if (direction == -1)
+			{
+
+				if (deltaT >= 1.0 / FPS)
+				{
+					montanhas.iFrame = (montanhas.iFrame - 1) % 1000;
+					chao1.iFrame = (chao1.iFrame - 1) % 1000;
+					chao2.iFrame = (chao2.iFrame - 1) % 1000;
+					chao3.iFrame = (chao3.iFrame - 1) % 1000;
+				}
+				offsetTexBg.s = ceu.iFrame;
+				offsetTexBg.t = 0.0;
+				glUniform2f(glGetUniformLocation(shaderID, "offsetTex"), offsetTexBg.s, offsetTexBg.t);
+
+				glBindVertexArray(ceu.VAO);				 // Conectando ao buffer de geometria.
+				glBindTexture(GL_TEXTURE_2D, ceu.texID); // Conectando ao buffer de textura.
+
+				// Chamada de desenho - drawcall.
+				// Poligono Preenchido - GL_TRIANGLES.
+				glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+
+				// Montanhas.
+				offsetTexM.s = montanhas.iFrame * 0.001;
+				offsetTexM.t = 0.0;
+				glUniform2f(glGetUniformLocation(shaderID, "offsetTex"), offsetTexM.s, offsetTexM.t);
+				glBindVertexArray(montanhas.VAO);
+				glBindTexture(GL_TEXTURE_2D, montanhas.texID);
+				glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+
+				// Chão mais ao fundo.
+				offsetTexM.s = chao1.iFrame * 0.005;
+				offsetTexM.t = 0;
+				glUniform2f(glGetUniformLocation(shaderID, "offsetTex"), offsetTexM.s, offsetTexM.t);
+				glBindVertexArray(chao1.VAO);
+				glBindTexture(GL_TEXTURE_2D, chao1.texID);
+				glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+
+				// Segundo chão mais ao fundo(intermediário).
+				offsetTexM.s = chao2.iFrame * 0.007;
+				offsetTexM.t = 0;
+				glUniform2f(glGetUniformLocation(shaderID, "offsetTex"), offsetTexM.s, offsetTexM.t);
+				glBindVertexArray(chao2.VAO);
+				glBindTexture(GL_TEXTURE_2D, chao2.texID);
+				glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+
+				// Chão onde o personagem está.
+				offsetTexM.s = chao3.iFrame * 0.02;
+				offsetTexM.t = 0;
+				glUniform2f(glGetUniformLocation(shaderID, "offsetTex"), offsetTexM.s, offsetTexM.t);
+				glBindVertexArray(chao3.VAO);
+				glBindTexture(GL_TEXTURE_2D, chao3.texID);
+				glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+
+				//---------------------------------------------------------------------
+				// Desenho do vampirao.
+				// Matriz de transformaçao do objeto - Matriz de modelo.
+				model = mat4(1); // matriz identidade
+				model = translate(model, vampirao.position);
+				model = rotate(model, radians(180.0f), vec3(0.0, 1.0, 0.0)); // Inverte a direção do personagem.
+				model = scale(model, vampirao.dimensions);
+				glUniformMatrix4fv(glGetUniformLocation(shaderID, "model"), 1, GL_FALSE, value_ptr(model));
+
+				vec2 offsetTex;
+
+				if (deltaT >= 1.0 / FPS)
+				{
+					vampirao.iFrame = (vampirao.iFrame + 1) % vampirao.nFrames; // incremento "circular".
+					lastTime = currTime;
+				}
+
+				offsetTex.s = vampirao.iFrame * vampirao.ds;
+				offsetTex.t = 0.0;
+				glUniform2f(glGetUniformLocation(shaderID, "offsetTex"), offsetTex.s, offsetTex.t);
+
+				glBindVertexArray(vampirao.VAO);			  // Conectando ao buffer de geometria.
+				glBindTexture(GL_TEXTURE_2D, vampirao.texID); // Conectando ao buffer de textura.
+
+				// Chamada de desenho - drawcall.
+				// Poligono Preenchido - GL_TRIANGLES.
+				glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+			}
+		}
+		// Troca dos Buffers da tela.
 		glfwSwapBuffers(window);
 	}
-	// Pede pra OpenGL desalocar os buffers
-	glDeleteVertexArrays(1, &VAO);
-	// Finaliza a execução da GLFW, limpando os recursos alocados por ela
+	// Finaliza a execução da GLFW, limpando os recursos alocados por ela.
 	glfwTerminate();
 	return 0;
 }
 
 // Função de callback de teclado - só pode ter uma instância (deve ser estática se
 // estiver dentro de uma classe) - É chamada sempre que uma tecla for pressionada
-// ou solta via GLFW
+// ou solta via GLFW.
+// Nesta função, além da chamada para fechar a janela ao ser pressionada a tecla ESC, é verificada se alguma das setas horizontais do teclado foram pressionadas.
+// Quando uma seta é pressionada, o personagem se move na direção das setas.
 void key_callback(GLFWwindow *window, int key, int scancode, int action, int mode)
 {
 	if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS)
 		glfwSetWindowShouldClose(window, GL_TRUE);
+
+	if (key == GLFW_KEY_RIGHT && action == GLFW_PRESS)
+	{
+		movimento = true;
+		direction = 1;
+	}
+	if (key == GLFW_KEY_RIGHT && action == GLFW_RELEASE)
+	{
+		movimento = false;
+		direction = 0;
+	}
+
+	if (key == GLFW_KEY_LEFT && action == GLFW_PRESS)
+	{
+		movimento = true;
+		direction = -1;
+	}
+
+	if (key == GLFW_KEY_LEFT && action == GLFW_RELEASE)
+	{
+		movimento = false;
+	}
 }
 
 // Esta função está bastante hardcoded - objetivo é compilar e "buildar" um programa de
@@ -308,20 +652,21 @@ int setupShader()
 // Apenas atributo coordenada nos vértices
 // 1 VBO com as coordenadas, VAO com apenas 1 ponteiro para atributo
 // A função retorna o identificador do VAO
-
-int setupSprite()
+int setupSprite(int nAnimations, int nFrames, float &ds, float &dt)
 {
+	ds = 1.0 / (float)nFrames;
+	dt = 1.0 / (float)nAnimations;
 	// Aqui setamos as coordenadas x, y e z do triângulo e as armazenamos de forma
-	// sequencial, já visando mandar para o VBO (Vertex Buffer Objects)
+	// sequencial, já visando mandar para o VBO (Vertex Buffer Objects).
 	// Cada atributo do vértice (coordenada, cores, coordenadas de textura, normal, etc)
-	// Pode ser arazenado em um VBO único ou em VBOs separados
+	// pode ser arazenado em um VBO único ou em VBOs separados
 	GLfloat vertices[] = {
 		// x   y    z    s     t
-		-0.5,  0.5, 0.0, 0.0, 1.0, //V0
-		-0.5, -0.5, 0.0, 0.0, 0.0, //V1
-		 0.5,  0.5, 0.0, 1.0, 1.0, //V2
-		 0.5, -0.5, 0.0, 1.0, 0.0  //V3
-		};
+		-0.5, 0.5, 0.0, 0.0, dt,   // V0
+		-0.5, -0.5, 0.0, 0.0, 0.0, // V1
+		0.5, 0.5, 0.0, ds, dt,	   // V2
+		0.5, -0.5, 0.0, ds, 0.0	   // V3
+	};
 
 	GLuint VBO, VAO;
 	// Geração do identificador do VBO
@@ -362,7 +707,7 @@ int setupSprite()
 	return VAO;
 }
 
-int loadTexture(string filePath)
+int loadTexture(string filePath, int &width, int &height)
 {
 	GLuint texID;
 
@@ -376,7 +721,7 @@ int loadTexture(string filePath)
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 
-	int width, height, nrChannels;
+	int nrChannels;
 
 	unsigned char *data = stbi_load(filePath.c_str(), &width, &height, &nrChannels, 0);
 
@@ -403,4 +748,3 @@ int loadTexture(string filePath)
 
 	return texID;
 }
-
