@@ -17,3 +17,6 @@ O cenário foi feito em camadas de texturas, cada uma utilizando um offset difer
 
 ## Exercícios Módulo 3
 Jogo das cores, o qual consiste em eliminar os quadrados com cores similares. O número de quadrados de cores similares eliminados é indicado no console.
+
+## Prova GB
+A prova está na pasta src, com o nome de ShellHunter.cpp.
