@@ -4,7 +4,7 @@ A prova consiste em criar um jogo 2D com visão isométrica (estratégia diamond
 
 No jogo desenvolvido, controlamos um pequeno marinheiro que coleta conchas na praia. Há 10 conchas no total para serem coletadas.
 
-A maré muda a cada 30 segundos. Na maré alta, o personagem fica impedido de coletar as conchas submersas. Caso o personagem seja pego pela maré, ele deve ficará preso até a maré baixar novamente, a menos que o tile imediato ao seu lado seja terra firme. Neste caso, ele consegue voltar para a praia, mas ainda deve aguardar a maré baixar para poder voltar a coletar as conchas.
+A maré muda a cada 30 segundos. Na maré alta, o personagem fica impedido de coletar as conchas submersas. Caso o personagem seja pego pela maré, ele  ficará preso até a maré baixar novamente, a menos que o tile imediato ao seu lado seja terra firme. Nesse caso, ele consegue voltar para a praia, mas ainda deve aguardar a maré baixar para poder voltar a coletar as conchas.
 
 As conchas são colocadas em posições aleatórias com a função rand. Quando coletadas, as conchas somem do mapa.
 
