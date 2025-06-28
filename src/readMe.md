@@ -12,3 +12,5 @@ A coleta das conchas é feita com a comparação da posição do personagem no m
 
 Ao coletar todas as 10 conchas, uma mensagem aparece no console parabenizando o jogador.
 
+Os assests usados estão na pasta assests, no início do repositório.  
+
