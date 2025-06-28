@@ -546,7 +546,7 @@ void key_callback(GLFWwindow *window, int key, int scancode, int action, int mod
 		points ++;
 		cout << "Pontos: " << points << endl;
 		if(points == maxPoints)
-			cout << "Parabens!!!! Todas as conchasforam coletadas!!!" << points << endl;
+			cout << "Parabens!!!! Todas as conchas foram coletadas!!! Pontos: " << points << endl;
     }
 }
 
