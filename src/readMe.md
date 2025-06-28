@@ -1,6 +1,6 @@
 #Prova de Grau B.
 
-A prova consiste em criar um jogo 2D com visão isométrica (estratégia diamond view). 
+A prova consiste em criar um jogo 2D com visão isométrica (estratégia diamond view). O nome escolhido para o jogo foi ShellHunter. 
 
 No jogo desenvolvido, controlamos um pequeno marinheiro que coleta conchas na praia. Há 10 conchas no total para serem coletadas.
 
