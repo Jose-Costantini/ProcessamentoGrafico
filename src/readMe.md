@@ -1,4 +1,4 @@
-#Prova de Grau B.
+#Prova de Grau B: arquivo ShellHunter.cpp
 
 A prova consiste em criar um jogo 2D com visão isométrica (estratégia diamond view). O nome escolhido para o jogo foi ShellHunter. 
 
